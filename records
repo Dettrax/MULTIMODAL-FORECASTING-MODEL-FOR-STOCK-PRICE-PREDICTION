@@ -1,0 +1,19 @@
+#2 0.880
+print(study.best_params)
+{'hidden_dim': 84, 'dropout_rate': 0.10924601759225532, 'lookback': 1, 'num_epochs': 299, 'batch_size': 52, 'lr': 6.599320933831208e-05, 'weight_decay': 0.0001443204850539564}
+
+#1 0.89112
+print(study.best_params)
+{'hidden_dim': 38, 'dropout_rate': 0.49397836975432774, 'lookback': 1, 'num_epochs': 154, 'batch_size': 65, 'lr': 0.0007525148153002192, 'weight_decay': 0.00019156247001597118}
+
+#3 0.897
+print(study.best_params)
+{'hidden_dim': 95, 'dropout_rate': 0.19456143086274463, 'lookback': 1, 'num_epochs': 180, 'batch_size': 33, 'lr': 0.0004409266083417682, 'weight_decay': 2.2101545166559723e-05}
+
+
+for model 1
+xgb : y,yhat = run_xgb(merge_data_with_output, 2,84)
+
+for model 2
+xgb : y,yhat = run_xgb(merge_data_with_output, 1,48)
+
