@@ -12,7 +12,7 @@ np.random.seed(10)
 torch.manual_seed(10)
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-data = pd.read_csv('brent_processed.csv')
+data = pd.read_csv('brent_with_forecasted_volatility.csv')
 data = data.dropna(axis=0, how='any')
 data.index = pd.to_datetime(data['Date'], format='%Y-%m-%d')
 data =data.drop(['Date'], axis=1)
@@ -31,10 +31,10 @@ merge_data = pd.merge(data, residuals, on='Date')
 merge_idx = merge_data.index
 merge_cols = merge_data.columns
 #apply minmaxscaler
-from sklearn.preprocessing import MinMaxScaler
-scaler = MinMaxScaler()
-merge_data = scaler.fit_transform(merge_data)
-merge_data = pd.DataFrame(merge_data, index=merge_idx, columns=merge_cols)
+# from sklearn.preprocessing import MinMaxScaler
+# scaler = MinMaxScaler()
+# merge_data = scaler.fit_transform(merge_data)
+# merge_data = pd.DataFrame(merge_data, index=merge_idx, columns=merge_cols)
 
 train = merge_data.loc[:test_split]
 test = merge_data.loc[test_beg:]
@@ -135,12 +135,12 @@ def objective(trial):
 # # Print the best parameters
 # print(study.best_params)
 
-best_params = {'hidden_dim': 84, 'dropout_rate': 0.10924601759225532, 'lookback': 1, 'num_epochs': 299, 'batch_size': 52, 'lr': 6.599320933831208e-05, 'weight_decay': 0.0001443204850539564}
+best_params = {'hidden_dim': 38, 'dropout_rate': 0.49397836975432774, 'lookback': 1, 'num_epochs': 154, 'batch_size': 65, 'lr': 0.0007525148153002192, 'weight_decay': 0.00019156247001597118}
 
 
 # r2,outputs = optimizer_lstm(train, test, 1, best_params['hidden_dim'], best_params['dropout_rate'], best_params['lookback'], best_params['num_epochs'], best_params['batch_size'], best_params['lr'], best_params['weight_decay'])
 
-model = lstm(model_type=2,input_dim=len(train.columns), hidden_dim=best_params['hidden_dim'], output_dim=1,dropout_rate=best_params['dropout_rate']).to(device)
+model = lstm(model_type=1,input_dim=len(train.columns), hidden_dim=best_params['hidden_dim'], output_dim=1,dropout_rate=best_params['dropout_rate']).to(device)
 
 # Define the loss function and optimizer
 criterion = nn.MSELoss()
@@ -196,9 +196,11 @@ def test(merge_data):
     return calculate_metrics(merge_data['Price'], merge_data['LSTM_Output'])
 
 #mse, rmse, mae, r2
-#(0.00042452628726304944, 0.02060403570330457, 0.015364266255701567, 0.9905384991197792)
 merge_data_with_output = merge_data_with_output.dropna(axis=0, how='any')
-print(test(merge_data_with_output))
+
+(0.0002441617517459018, 0.015625676041243843, 0.011825978872480943, 0.8888671921201744)
+merge_data_with_output_test = merge_data_with_output.loc[test_beg:]
+print(test(merge_data_with_output_test))
 
 import xgboost_run
 def run_xgb(merge_data,lookback, n_estimators=20):
@@ -250,18 +252,16 @@ initial_params = {
     'lookback': 6
 }
 
-# Enqueue the trial with initial parameters
-study.enqueue_trial(initial_params)
-n_trials = 50
-study.optimize(lambda trial: objective(trial), n_trials=n_trials,n_jobs=-1)
+# # Enqueue the trial with initial parameters
+# study.enqueue_trial(initial_params)
+# n_trials = 50
+# study.optimize(lambda trial: objective(trial), n_trials=n_trials,n_jobs=-1)
 
 # Print the best parameters
-print(study.best_params)
+# print(study.best_params)
 #{'n_estimators': 84, 'lookback': 2} : 0.94
 
 y,yhat = run_xgb(merge_data_with_output, 2,84)
 
-#mse, rmse, mae, r2 (0.00011711893633394431, 0.010822150263877521, 0.00840573064930789, 0.9321160241016728)
-#(0.00010370069940222155, 0.010183354035003474, 0.00771811462583996, 0.9455227692118909)
 print(calculate_metrics(y, yhat))
 
