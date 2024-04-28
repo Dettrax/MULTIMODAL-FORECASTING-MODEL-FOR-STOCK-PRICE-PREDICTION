@@ -73,3 +73,9 @@ pip install numpy pandas torch nltk optuna sklearn matplotlib
 You will also need to have the FinBERT transformer model available for the sentiment analysis. You can find more information about this model and how to use it [here](https://github.com/ProsusAI/finBERT).
 
 Finally, you will need access to the oilprices.com website to fetch the news articles, and the `brent_with_forecasted_volatility_prime.csv` and `brent_vec.xlsx` data files.
+
+## References
+
+- Mamba Model: [https://github.com/zshicode/MambaStock](https://github.com/zshicode/MambaStock)
+- Attention-CLX-stock-prediction: [https://github.com/zshicode/Attention-CLX-stock-prediction](https://github.com/zshicode/Attention-CLX-stock-prediction)
+- Paper: [https://arxiv.org/pdf/2111.09111](https://arxiv.org/pdf/2111.09111)
