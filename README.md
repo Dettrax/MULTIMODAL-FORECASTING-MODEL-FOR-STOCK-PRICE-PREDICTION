@@ -6,9 +6,11 @@ This project aims to predict oil prices using a combination of historical prices
 
 1. **ARIMA and GARCH Models**: These models are used to predict oil prices based on historical data. The corresponding scripts are `Arima.py` and `Garch.py`.
 
-2. **LSTM with ARIMA and GARCH**: This approach combines the LSTM model with ARIMA and GARCH models to improve the prediction accuracy. The script `call_lstm` is used for this purpose. You can choose between 1, 2, 3 for Seq, bidirectional, and CNN-Attention models. The performance of these models is further enhanced using an XGBoost model for fine-tuning.
+2. **LSTM with ARIMA and GARCH**: This approach combines the LSTM model with ARIMA and GARCH models to improve the prediction accuracy. The script `call_lstm` is used for this purpose. You can choose between 1, 2, 3 for Single, Multi, and bidirectional models. The performance of these models is further enhanced using an XGBoost model for fine-tuning.
 
-3. **Mamba Model**: This is a Linear-Time Sequence Modeling with Selective State Spaces. It is incorporated with news sentiment analysis to improve prediction metrics significantly. The script `Mamba` is used for this purpose. It has three versions:
+3. **CNN-Attention Model with ARIMA and GARCH**: This approach uses 1d Conv with Soft attention algorithm ARIMA and GARCH models. The script `call_attention` is used for this purpose. The performance of these model is further enhanced using an XGBoost model for fine-tuning.
+
+4**Mamba Model**: This is a Linear-Time Sequence Modeling with Selective State Spaces. It is incorporated with news sentiment analysis to improve prediction metrics significantly. The script `Mamba` is used for this purpose. It has three versions:
    - V1: Prediction with historic prices
    - V2: Prediction with historic prices and sentiment scores
    - V3: Prediction with historic prices, sentiment scores, and news vectors

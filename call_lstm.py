@@ -8,13 +8,17 @@ from optuna.pruners import SuccessiveHalvingPruner
 from tqdm import tqdm
 import torch.nn as nn
 from sklearn import metrics
-np.random.seed(10)
-torch.manual_seed(10)
+torch.backends.cudnn.deterministic=True
+np.random.seed(0)
+torch.manual_seed(0)
+torch.cuda.manual_seed(0)
+if torch.cuda.is_available():
+    torch.cuda.manual_seed_all(0)
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-data = pd.read_csv('brent_with_forecasted_volatility.csv')
+data = pd.read_csv('brent_with_forecasted_volatility_prime.csv')
 data = data.dropna(axis=0, how='any')
-data.index = pd.to_datetime(data['Date'], format='%Y-%m-%d')
+data.index = pd.to_datetime(data['Date'], format='%m/%d/%Y')
 data =data.drop(['Date'], axis=1)
 data = pd.DataFrame(data, dtype=np.float64)
 
@@ -27,14 +31,14 @@ residuals = pd.read_csv('./ARIMA_residuals1.csv')
 residuals.index = pd.to_datetime(residuals['Date'])
 residuals.pop('Date')
 merge_data = pd.merge(data, residuals, on='Date')
-
+cols = merge_data.columns
 merge_idx = merge_data.index
 merge_cols = merge_data.columns
-#apply minmaxscaler
-# from sklearn.preprocessing import MinMaxScaler
-# scaler = MinMaxScaler()
-# merge_data = scaler.fit_transform(merge_data)
-# merge_data = pd.DataFrame(merge_data, index=merge_idx, columns=merge_cols)
+# apply minmaxscaler
+from sklearn.preprocessing import MinMaxScaler
+scaler = MinMaxScaler()
+merge_data = scaler.fit_transform(merge_data)
+merge_data = pd.DataFrame(merge_data, index=merge_idx, columns=merge_cols)
 
 train = merge_data.loc[:test_split]
 test = merge_data.loc[test_beg:]
@@ -104,7 +108,7 @@ def optimizer_lstm(train, test,model_type, hidden_dim, dropout_rate,lookback=10,
         outputs = model(testX.float())
         mse, rmse, mae, r2 = calculate_metrics(testY, outputs.squeeze())
         # print(f'MSE: {mse:.4f}, RMSE: {rmse:.4f}, MAE: {mae:.4f}, R2 Score: {r2:.4f}')
-    return r2,outputs
+    return r2
 
 
 def objective(trial):
@@ -135,12 +139,12 @@ def objective(trial):
 # # Print the best parameters
 # print(study.best_params)
 
-best_params = {'hidden_dim': 38, 'dropout_rate': 0.49397836975432774, 'lookback': 1, 'num_epochs': 154, 'batch_size': 65, 'lr': 0.0007525148153002192, 'weight_decay': 0.00019156247001597118}
+best_params = {'hidden_dim': 84, 'dropout_rate': 0.10924601759225532, 'lookback': 1, 'num_epochs': 299, 'batch_size': 52, 'lr': 6.599320933831208e-05, 'weight_decay': 0.0001443204850539564}
 
 
 # r2,outputs = optimizer_lstm(train, test, 1, best_params['hidden_dim'], best_params['dropout_rate'], best_params['lookback'], best_params['num_epochs'], best_params['batch_size'], best_params['lr'], best_params['weight_decay'])
 
-model = lstm(model_type=1,input_dim=len(train.columns), hidden_dim=best_params['hidden_dim'], output_dim=1,dropout_rate=best_params['dropout_rate']).to(device)
+model = lstm(model_type=2,input_dim=len(train.columns), hidden_dim=best_params['hidden_dim'], output_dim=1,dropout_rate=best_params['dropout_rate']).to(device)
 
 # Define the loss function and optimizer
 criterion = nn.MSELoss()
@@ -171,6 +175,7 @@ model.eval()
 with torch.no_grad():
     outputs = model(testX.float())
 
+
 # Create a placeholder DataFrame
 lstm_output_df = pd.DataFrame(index=merge_data.index, columns=['LSTM_Output'])
 lstm_output_df = lstm_output_df.fillna(np.nan)
@@ -192,15 +197,30 @@ def calculate_metrics(y_true, y_pred):
     return mse, rmse, mae, r2
 
 
-def test(merge_data):
-    return calculate_metrics(merge_data['Price'], merge_data['LSTM_Output'])
+
+def inverse_process(data,cols):
+    temp = []
+    for d in data:
+        d = [d]
+        for i in range(cols-1):
+            d = d + [0]
+        temp.append(d)
+    return temp
 
 #mse, rmse, mae, r2
 merge_data_with_output = merge_data_with_output.dropna(axis=0, how='any')
 
-(0.0002441617517459018, 0.015625676041243843, 0.011825978872480943, 0.8888671921201744)
 merge_data_with_output_test = merge_data_with_output.loc[test_beg:]
-print(test(merge_data_with_output_test))
+
+
+model_test_inv = inverse_process(merge_data_with_output_test['Price'].values, len(merge_cols))
+true_test_inv = inverse_process(merge_data_with_output_test['LSTM_Output'].values, len(merge_cols))
+model_test_inv = scaler.inverse_transform(model_test_inv)[:,0]
+test_test_inv = scaler.inverse_transform(true_test_inv)[:,0]
+
+print('Without XGB finetuning :',calculate_metrics(model_test_inv, test_test_inv))
+
+
 
 import xgboost_run
 def run_xgb(merge_data,lookback, n_estimators=20):
@@ -263,5 +283,9 @@ initial_params = {
 
 y,yhat = run_xgb(merge_data_with_output, 2,84)
 
-print(calculate_metrics(y, yhat))
+xgb_y = np.array(inverse_process(y, len(merge_cols))).reshape(len(y),-1)
+xgb_yhat = np.array(inverse_process(yhat, len(merge_cols))).reshape(len(yhat),-1)
+xgb_y = scaler.inverse_transform(xgb_y)[:,0]
+xgb_yhat = scaler.inverse_transform(xgb_yhat)[:,0]
 
+print('With XGB finetuning :',calculate_metrics(xgb_y, xgb_yhat))

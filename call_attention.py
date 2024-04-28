@@ -8,13 +8,17 @@ from optuna.pruners import SuccessiveHalvingPruner
 from tqdm import tqdm
 import torch.nn as nn
 from sklearn import metrics
-np.random.seed(10)
-torch.manual_seed(10)
+torch.backends.cudnn.deterministic=True
+np.random.seed(0)
+torch.manual_seed(0)
+torch.cuda.manual_seed(0)
+if torch.cuda.is_available():
+    torch.cuda.manual_seed_all(0)
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-data = pd.read_csv('brent_processed.csv')
+data = pd.read_csv('brent_with_forecasted_volatility_prime.csv')
 data = data.dropna(axis=0, how='any')
-data.index = pd.to_datetime(data['Date'], format='%Y-%m-%d')
+data.index = pd.to_datetime(data['Date'], format='%m/%d/%Y')
 data =data.drop(['Date'], axis=1)
 data = pd.DataFrame(data, dtype=np.float64)
 
@@ -76,7 +80,6 @@ def optimizer_att(train, test,cnn_output, hidden_dim, dropout_rate,lookback=10, 
             inputs = inputs.detach().cpu()
             inputs = inputs.permute(0, 2, 1)
             inputs = torch.tensor(inputs.float(), device=device)
-            print(f"inputs type before forward pass: {inputs.dtype}")  # Add this line
 
             optimizer.zero_grad()
             outputs = model(inputs.float())
@@ -106,10 +109,8 @@ def optimizer_att(train, test,cnn_output, hidden_dim, dropout_rate,lookback=10, 
     model.eval()
     with torch.no_grad():
         testX = testX.permute(0, 2, 1)
-        print(f"testX type before forward pass: {testX.dtype}")  # Add this line
         outputs = model(testX.to(torch.float32).to(device))
         mse, rmse, mae, r2 = calculate_metrics(testY, outputs.squeeze())
-        print(f'MSE: {mse:.4f}, RMSE: {rmse:.4f}, MAE: {mae:.4f}, R2 Score: {r2:.4f}')
     return r2
 
 
@@ -131,15 +132,166 @@ def objective(trial):
     # Return the R2 score as the value to maximize
     return r2
 
+#
+# # Create a study object and optimize the objective function
+# sampler = TPESampler(seed=10)
+# pruner = SuccessiveHalvingPruner()
+# study = optuna.create_study(direction='maximize', sampler=sampler, pruner=pruner)
+# study.optimize(objective, n_trials=100,n_jobs=1)
+#
+# # Print the best parameters
+# print(study.best_params)
+best_params = {'hidden_dim': 84, 'dropout_rate': 0.10924601759225532, 'lookback': 1, 'num_epochs': 299, 'batch_size': 52, 'lr': 6.599320933831208e-05, 'weight_decay': 0.0001443204850539564,'cnn_output': 32}
+
+model = AttentionModel(input_dims=len(train.columns), lstm_units=best_params['hidden_dim'],cnn_output=best_params['cnn_output'],dropout_rate=best_params['dropout_rate']).to(device)
+
+# Define the loss function and optimizer
+criterion = nn.MSELoss()
+optimizer = torch.optim.Adam(model.parameters(), lr=best_params['lr'], weight_decay=best_params['weight_decay'])
+
+# Create sequences for LSTM
+lookback = best_params['lookback']
+testX, testY = create_sequences(merge_data.values, lookback)
+
+trainX, trainY = create_sequences(train.values, lookback)
+
+# Train the model
+num_epochs = best_params['num_epochs']
+batch_size = best_params['batch_size']
+model.train()
+# Training loop for the best model
+for epoch in tqdm(range(num_epochs)):
+    for i in range(0, len(trainX), batch_size):
+        inputs = trainX[i:i + batch_size]
+        targets = trainY[i:i + batch_size]
+        optimizer.zero_grad()
+        inputs = inputs.detach().cpu()
+        inputs = inputs.permute(0, 2, 1)
+        inputs = torch.tensor(inputs.float(), device=device)
+        outputs = model(inputs.float())
+        loss = criterion(outputs.squeeze(), targets.float())
+        loss.backward()
+        optimizer.step()
+
+model.eval()
+with torch.no_grad():
+    testX = testX.permute(0, 2, 1)
+    outputs = model(testX.float())
+
+
+# Create a placeholder DataFrame
+lstm_output_df = pd.DataFrame(index=merge_data.index, columns=['LSTM_Output'])
+lstm_output_df = lstm_output_df.fillna(np.nan)
+
+# Fill the last part of the DataFrame with the LSTM model's output
+lstm_output_df.iloc[-len(outputs):] = outputs.cpu().numpy()
+
+# Concatenate the LSTM output with the original data
+merge_data_with_output = pd.concat([merge_data, lstm_output_df], axis=1)
+
+
+def calculate_metrics(y_true, y_pred):
+
+    mse = metrics.mean_squared_error(y_true, y_pred)
+    rmse = np.sqrt(mse)
+    mae = metrics.mean_absolute_error(y_true, y_pred)
+    r2 = metrics.r2_score(y_true, y_pred)
+
+    return mse, rmse, mae, r2
+
+
+
+def inverse_process(data,cols):
+    temp = []
+    for d in data:
+        d = [d]
+        for i in range(cols-1):
+            d = d + [0]
+        temp.append(d)
+    return temp
+
+#mse, rmse, mae, r2
+merge_data_with_output = merge_data_with_output.dropna(axis=0, how='any')
+
+merge_data_with_output_test = merge_data_with_output.loc[test_beg:]
+
+
+model_test_inv = inverse_process(merge_data_with_output_test['Price'].values, len(merge_cols))
+true_test_inv = inverse_process(merge_data_with_output_test['LSTM_Output'].values, len(merge_cols))
+model_test_inv = scaler.inverse_transform(model_test_inv)[:,0]
+test_test_inv = scaler.inverse_transform(true_test_inv)[:,0]
+
+print('Without XGB finetuning :',calculate_metrics(model_test_inv, test_test_inv))
+
+
+
+import xgboost_run
+def run_xgb(merge_data,lookback, n_estimators=20):
+
+    train = merge_data.loc[:test_split]
+    test = merge_data.loc[test_beg:]
+
+    Lt = pd.read_csv('./ARIMA.csv')
+    Lt = Lt.drop('trade_date', axis=1)
+
+    lt_delta = test.copy()
+    lt_delta.pop('0')
+
+    checker = test.copy()
+    price = checker.pop('Price')
+    checker.insert(6, 'Price', price)
+
+    lt_delta.insert(6, 'Lt', Lt)
+    train_x, train_y, test_x, test_y, delta_x, delta_y, checker_x, checker_y = xgboost_run.prep_data(train, test, lt_delta, checker, lookback)
+    y, yhat = xgboost_run.walk_forward_validation(train_x, test_x, test_y, n_estimators)
+    return y, yhat
+
+# y,yhat = run_xgb(merge_data_with_output, 6,10)
+#
+# #mse, rmse, mae, r2 (0.00011711893633394431, 0.010822150263877521, 0.00840573064930789, 0.9321160241016728)
+# calculate_metrics(y, yhat)
+
+def objective(trial):
+    # Define the hyperparameters to optimize
+    n_estimators = trial.suggest_int('n_estimators', 10, 100)
+    lookback = trial.suggest_int('lookback', 1, 20)
+
+    # Optimize the lookback and n_estimators
+    y,yhat = run_xgb(merge_data_with_output, lookback, n_estimators)
+    R2 = calculate_metrics(y, yhat)[-1]
+
+    # Return the R2 score as the value to maximize
+    return R2
+
 
 # Create a study object and optimize the objective function
 sampler = TPESampler(seed=10)
 pruner = SuccessiveHalvingPruner()
-study = optuna.create_study(direction='maximize', sampler=sampler, pruner=pruner)
-study.optimize(objective, n_trials=100,n_jobs=1)
+study = optuna.create_study(direction='maximize',sampler=sampler, pruner=pruner)
+
+# Provide initial parameters
+initial_params = {
+    'n_estimators': 10,
+    'lookback': 6
+}
+
+# # Enqueue the trial with initial parameters
+# study.enqueue_trial(initial_params)
+# n_trials = 50
+# study.optimize(lambda trial: objective(trial), n_trials=n_trials,n_jobs=-1)
 
 # Print the best parameters
-print(study.best_params)
+# print(study.best_params)
+#{'n_estimators': 84, 'lookback': 2} : 0.94
+
+y,yhat = run_xgb(merge_data_with_output, 2,84)
+
+xgb_y = np.array(inverse_process(y, len(merge_cols))).reshape(len(y),-1)
+xgb_yhat = np.array(inverse_process(yhat, len(merge_cols))).reshape(len(yhat),-1)
+xgb_y = scaler.inverse_transform(xgb_y)[:,0]
+xgb_yhat = scaler.inverse_transform(xgb_yhat)[:,0]
+
+print('With XGB finetuning :',calculate_metrics(xgb_y, xgb_yhat))
 
 
 
