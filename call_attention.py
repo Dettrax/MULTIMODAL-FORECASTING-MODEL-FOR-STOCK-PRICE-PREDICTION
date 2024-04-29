@@ -1,6 +1,6 @@
 # Type - Soft, Multihead, ScaledDot
 Att_type = 'Multihead'
-HyperOpt = True
+HyperOpt = False
 InCol = True
 
 print('Attention Type:', Att_type)
@@ -165,10 +165,12 @@ if Att_type == 'ScaledDot':
 
 elif Att_type == 'Multihead':
     if InCol:
-        best_params = {'cnn_output': 290, 'hidden_dim': 220, 'dropout_rate': 0.14025128863511263, 'lookback': 1, 'num_epochs': 75, 'batch_size': 127, 'lr': 0.0012340990424287853, 'head': 4, 'weight_decay': 0.00011356340578794312}
+        best_params = {'cnn_output': 103, 'hidden_dim': 32, 'dropout_rate': 0.10059833220728626, 'lookback': 1, 'num_epochs': 181, 'batch_size': 40, 'lr': 0.0004958897569202592, 'weight_decay': 0.0003430870310630467}
+
 
     else:
-        pass
+        best_params = {'cnn_output': 120, 'hidden_dim': 260, 'dropout_rate': 0.3993945988255202, 'lookback': 2, 'num_epochs': 283, 'batch_size': 35, 'lr': 0.0002545425421441458, 'head': 12, 'weight_decay': 2.3663693741666137e-05}
+
 
 
 else:
@@ -341,7 +343,7 @@ initial_params = {
 
 # Enqueue the trial with initial parameters
 study.enqueue_trial(initial_params)
-n_trials = 50
+n_trials = 30
 study.optimize(lambda trial: objective(trial), n_trials=n_trials, n_jobs=-1)
 
 # # Print the best parameters

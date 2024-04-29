@@ -67,6 +67,8 @@ merge_cols = merge_data.columns
 
 merge_data['Price_pre_close_pct_change'] = merge_data['Price_pre_close_pct_change'].apply(lambda x:0.01*x).values
 merge_data.pop('pre_close')
+
+
 train = merge_data.loc[:test_split]
 test = merge_data.loc[test_beg:]
 train.reset_index(drop=True, inplace=True)
@@ -128,7 +130,7 @@ def PredictLoss(trainX, trainy, testX,test_price,hidden=16,epoch=100,lr=0.01,wei
     mat = clf(xv)
     if True: mat = mat.cpu()
     yhat = mat.detach().numpy().flatten()
-    return evluate_model(yhat,test_price)[-1]
+    return evluate_model(yhat,test_price)
 
 def PredictWithData(trainX, trainy, testX,hidden=16,epoch=100,lr=0.01,weight_decay=0.01,num_layers=2):
     clf = Net(len(trainX[0]), 1,hidden,num_layers)
@@ -194,35 +196,39 @@ def objective(trial):
 
 # print(PredictLoss(trainX, trainy, testX,test_price,hidden=16,epoch=100,lr=0.01,weight_decay=0.0001,num_layers=2))
 
-initial_params = {'hidden_dim': 10, 'num_epochs': 255, 'num_layer': 1, 'lr': 0.00372006824710135, 'weight_decay': 0.00025504132602412996}
-
-# Create a study object and optimize the objective function
-sampler = TPESampler(seed=10)
-pruner = SuccessiveHalvingPruner()
-study = optuna.create_study(direction='maximize', sampler=sampler, pruner=pruner)
-study.enqueue_trial(initial_params)
-study.optimize(objective, n_trials=100)
-
-# Print the best parameters
-print(study.best_params)
+# initial_params = {'hidden_dim': 10, 'num_epochs': 255, 'num_layer': 1, 'lr': 0.00372006824710135, 'weight_decay': 0.00025504132602412996}
+#
+# # Create a study object and optimize the objective function
+# sampler = TPESampler(seed=10)
+# pruner = SuccessiveHalvingPruner()
+# study = optuna.create_study(direction='maximize', sampler=sampler, pruner=pruner)
+# study.enqueue_trial(initial_params)
+# study.optimize(objective, n_trials=100)
+#
+# # Print the best parameters
+# print(study.best_params)
 
 
 # #kaggle
-# best_param = {'hidden_dim': 16, 'num_epochs': 100, 'num_layer': 2, 'lr': 0.01, 'weight_decay': 0.0001}
+best_param = {'hidden_dim': 16, 'num_epochs': 100, 'num_layer': 2, 'lr': 0.01, 'weight_decay': 0.0001}
 #
 # # predictions = PredictWithData(trainX, trainy, testX,hidden=70,epoch=289,lr=0.00034401453323286885,weight_decay=0.017802616915745105,num_layers=1)
-# R2_l = []
-# MSE_l = []
-# MAE_l = []
-# RMSE_l = []
-# for i in tqdm(range(10)):
-#     MSE,RMSE,MAE,R2 = PredictLoss(trainX, trainy, testX,test_price,hidden=best_param['hidden_dim'],epoch=best_param['num_epochs'],lr=best_param['lr'],weight_decay=best_param['weight_decay'],num_layers=best_param['num_layer'])
-#     R2_l.append(R2)
-#     MSE_l.append(MSE)
-#     MAE_l.append(MAE)
-#     RMSE_l.append(RMSE)
-# print(sum(MSE_l)/10)
-# print(sum(RMSE_l)/10)
-# print(sum(MAE_l)/10)
-# print(sum(R2_l)/10)
-#
+
+R2_l = []
+MSE_l = []
+MAE_l = []
+RMSE_l = []
+for i in tqdm(range(10)):
+    MSE,RMSE,MAE,R2 = PredictLoss(trainX, trainy, testX,test_price,hidden=best_param['hidden_dim'],epoch=best_param['num_epochs'],lr=best_param['lr'],weight_decay=best_param['weight_decay'],num_layers=best_param['num_layer'])
+    R2_l.append(R2)
+    MSE_l.append(MSE)
+    MAE_l.append(MAE)
+    RMSE_l.append(RMSE)
+
+print("mse, rmse, mae, r2")
+print(sum(MSE_l)/10,end=' ')
+print(sum(RMSE_l)/10,end=' ')
+print(sum(MAE_l)/10,end=' ')
+print(sum(R2_l)/10,end=' ')
+
+#1.225454546777483 1.1069632997298882 0.8434523146210265 0.9512775292597

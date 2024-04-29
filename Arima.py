@@ -28,13 +28,6 @@ data =data.drop(['Date','Change'], axis=1)
 data = pd.DataFrame(data, dtype=np.float64)
 
 data.sort_index(inplace=True)
-data_idx = data.index
-#apply minmaxscaler
-from sklearn.preprocessing import MinMaxScaler
-scaler = MinMaxScaler()
-data = scaler.fit_transform(data)
-data = pd.DataFrame(data, index=data_idx, columns=['Price', 'Open', 'High', 'Low', 'Vol'])
-
 
 test_split = '2023-09-20'
 test_beg = '2023-09-21'

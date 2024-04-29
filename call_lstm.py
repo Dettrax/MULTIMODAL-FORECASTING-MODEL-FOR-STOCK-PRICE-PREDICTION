@@ -282,7 +282,7 @@ initial_params = {
 
 # Enqueue the trial with initial parameters
 study.enqueue_trial(initial_params)
-n_trials = 50
+n_trials = 30
 study.optimize(lambda trial: objective(trial), n_trials=n_trials,n_jobs=-1)
 
 # Print the best parameters
@@ -314,3 +314,5 @@ model = lstm(model_type=Model_Type,
 # Compute the total number of parameters in the model
 total_params = count_parameters(model)
 print(f'Total number of parameters in the model: {total_params}')
+
+
