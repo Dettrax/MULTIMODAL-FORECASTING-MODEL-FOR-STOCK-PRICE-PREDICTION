@@ -13,9 +13,9 @@ class Attention(nn.Module):
         weights = F.softmax(F.relu(torch.matmul(x, self.attention_weights.t())), dim=-1)
         return torch.sum(weights * x, dim=1)
 class AttentionModel(nn.Module):
-    def __init__(self, input_dims=13,lstm_units=64,cnn_output=64,dropout_rate=0.3):
+    def __init__(self, input_dims=13,lstm_units=64,cnn_output=64,dropout_rate=0.3,kernel_size=1):
         super().__init__()
-        self.conv1d = nn.Conv1d(input_dims, cnn_output, kernel_size=1)
+        self.conv1d = nn.Conv1d(input_dims, cnn_output, kernel_size=kernel_size)
         self.dropout1 = nn.Dropout(dropout_rate)
         self.bilstm = nn.LSTM(cnn_output, lstm_units, bidirectional=True, batch_first=True)
         self.dropout2 = nn.Dropout(dropout_rate)

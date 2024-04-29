@@ -1,6 +1,20 @@
+#Type - Soft, Multihead, ScaledDot
+Att_type = 'ScaledDot'
+HyperOpt = False
+InCol = True
+print('Attention Type:',Att_type)
+print('HyperOpt:',HyperOpt)
+print('InCol ARIMA and GARCH:',InCol)
+
+if Att_type == 'ScaledDot':
+    from ScaledDotAtten import *
+elif Att_type == 'Multihead':
+    from multiatten import *
+else:
+    from SoftAtten import *
+
 import pandas as pd
 import numpy as np
-from attention_model import *
 import torch
 import optuna
 from optuna.samplers import TPESampler
@@ -21,7 +35,6 @@ data = data.dropna(axis=0, how='any')
 data.index = pd.to_datetime(data['Date'], format='%m/%d/%Y')
 data =data.drop(['Date'], axis=1)
 data = pd.DataFrame(data, dtype=np.float64)
-
 data.sort_index(inplace=True)
 
 test_split = '2023-09-20' #150
@@ -31,6 +44,10 @@ residuals = pd.read_csv('./ARIMA_residuals1.csv')
 residuals.index = pd.to_datetime(residuals['Date'])
 residuals.pop('Date')
 merge_data = pd.merge(data, residuals, on='Date')
+
+if not InCol:
+    merge_data.pop('0')
+    merge_data.pop('Forecasted_Volatility')
 
 merge_idx = merge_data.index
 merge_cols = merge_data.columns
@@ -46,54 +63,49 @@ test = merge_data.loc[test_beg:]
 train.reset_index(drop=True, inplace=True)
 test.reset_index(drop=True, inplace=True)
 
+#for scaled dot attention
+if Att_type == 'ScaledDot':
+    def create_sequences(data, lookback):
+        x = []
+        y = []
+        for i in range(lookback, data.shape[0]):
+            x.append(data[i - lookback: i])
+            y.append(data[i - lookback: i, 0])  # Use a sequence of steps as the target
+        return torch.tensor(x, device=device), torch.tensor(y, device=device)
 
-def create_sequences(data, lookback):
-    x = []
-    y = []
-    for i in range(lookback, data.shape[0]):
-        x.append(data[i - lookback: i])
-        y.append(data[i, 0])
-    return torch.tensor(x, device=device), torch.tensor(y, device=device)
+#For soft attention and multihead attention
+else:
+    def create_sequences(data, lookback):
+        x = []
+        y = []
+        for i in range(lookback, data.shape[0]):
+            x.append(data[i - lookback: i])
+            y.append(data[i, 0])
+        return torch.tensor(x, device=device), torch.tensor(y, device=device)
 
 
-def optimizer_att(train, test,cnn_output, hidden_dim, dropout_rate,lookback=10, num_epochs=100, batch_size=64, lr=0.001, weight_decay=0.001):
-    model = AttentionModel(input_dims=len(train.columns), lstm_units=hidden_dim,cnn_output=cnn_output,dropout_rate=dropout_rate).to(device)
-
-    # Define the loss function and optimizer
+def optimise_attention(train, test, cnn_output, hidden_dim, dropout_rate, lookback=10, num_epochs=100, batch_size=64,lr=0.001, weight_decay=0.001, kernel_size=1):
+    model = AttentionModel(input_dims=len(train.columns), lstm_units=hidden_dim,
+                           cnn_output=cnn_output, dropout_rate=dropout_rate,
+                           kernel_size=1).to(device)
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
-
-
-    # Create sequences for LSTM
-    lookback = lookback
     trainX, trainY = create_sequences(train.values, lookback)
     testX, testY = create_sequences(test.values, lookback)
-    # Train the model
-    num_epochs = num_epochs
-    batch_size = batch_size
     model.train()
     # Training loop for the best model
     for epoch in range(num_epochs):
         for i in range(0, len(trainX), batch_size):
             inputs = trainX[i:i + batch_size]
             targets = trainY[i:i + batch_size]
+            optimizer.zero_grad()
             inputs = inputs.detach().cpu()
             inputs = inputs.permute(0, 2, 1)
             inputs = torch.tensor(inputs.float(), device=device)
-
-            optimizer.zero_grad()
             outputs = model(inputs.float())
             loss = criterion(outputs.squeeze(), targets.float())
             loss.backward()
             optimizer.step()
-        # if epoch % 10 == 0:
-        #     model.eval()
-        #     with torch.no_grad():
-        #         outputs = model(testX.float())
-        #         val_loss = criterion(outputs.squeeze(), testY.float())
-        #     print(f'Epoch {epoch + 1}, Loss: {val_loss.item():.4f}')
-
-
     def calculate_metrics(y_true, y_pred):
         y_true = y_true.cpu().detach().numpy()
         y_pred = y_pred.cpu().detach().numpy()
@@ -105,11 +117,10 @@ def optimizer_att(train, test,cnn_output, hidden_dim, dropout_rate,lookback=10, 
 
         return mse, rmse, mae, r2
 
-    # After training your model, you can calculate the metrics
     model.eval()
     with torch.no_grad():
         testX = testX.permute(0, 2, 1)
-        outputs = model(testX.to(torch.float32).to(device))
+        outputs = model(testX.float())
         mse, rmse, mae, r2 = calculate_metrics(testY, outputs.squeeze())
     return r2
 
@@ -125,25 +136,41 @@ def objective(trial):
     batch_size = trial.suggest_int('batch_size', 32, 128)
     lr = trial.suggest_loguniform('lr', 1e-5, 1e-2)
     weight_decay = trial.suggest_loguniform('weight_decay', 1e-5, 1e-1)
-
     # Optimize the hyperparameters
-    r2 = optimizer_att(train, test,cnn_output, hidden_dim, dropout_rate,lookback, num_epochs, batch_size, lr, weight_decay)
+    r2 = optimise_attention(train, test,cnn_output, hidden_dim, dropout_rate,lookback, num_epochs, batch_size, lr, weight_decay,1)
 
     # Return the R2 score as the value to maximize
     return r2
 
-#
-# # Create a study object and optimize the objective function
-# sampler = TPESampler(seed=10)
-# pruner = SuccessiveHalvingPruner()
-# study = optuna.create_study(direction='maximize', sampler=sampler, pruner=pruner)
-# study.optimize(objective, n_trials=100,n_jobs=1)
-#
-# # Print the best parameters
-# print(study.best_params)
-best_params = {'hidden_dim': 84, 'dropout_rate': 0.10924601759225532, 'lookback': 1, 'num_epochs': 299, 'batch_size': 52, 'lr': 6.599320933831208e-05, 'weight_decay': 0.0001443204850539564,'cnn_output': 32}
+if Att_type == 'ScaledDot':
+    if InCol:
+        best_params = {'cnn_output': 114, 'hidden_dim': 92, 'dropout_rate': 0.10135062229343499, 'lookback': 2, 'num_epochs': 249, 'batch_size': 77, 'lr': 0.00017943492288184664, 'weight_decay': 0.00030465328464725016}
+    else:
+        best_params = {'cnn_output': 53, 'hidden_dim': 147, 'dropout_rate': 0.11315172616291817, 'lookback': 1, 'num_epochs': 65, 'batch_size': 65, 'lr': 0.00036368397727844253, 'weight_decay': 0.0008437248421188951}
 
-model = AttentionModel(input_dims=len(train.columns), lstm_units=best_params['hidden_dim'],cnn_output=best_params['cnn_output'],dropout_rate=best_params['dropout_rate']).to(device)
+elif Att_type == 'Multihead':
+    pass
+
+else:
+    if InCol:
+        pass
+    else:
+        best_params = {'cnn_output': 174, 'hidden_dim': 34, 'dropout_rate': 0.4350155759204827, 'lookback': 1, 'num_epochs': 139,'batch_size': 32, 'lr': 0.0008070007381040095, 'weight_decay': 0.00015267510873944186}
+
+# Create a study object and optimize the objective function
+if HyperOpt:
+    sampler = TPESampler(seed=10)
+    pruner = SuccessiveHalvingPruner()
+    study = optuna.create_study(direction='maximize', sampler=sampler, pruner=pruner)
+    study.optimize(objective, n_trials=100)
+
+    # Print the best parameters
+    print(study.best_params)
+    best_params = study.best_params
+
+model = AttentionModel(input_dims=len(train.columns),lstm_units=best_params['hidden_dim'],cnn_output=best_params['cnn_output'],dropout_rate=best_params['dropout_rate'],kernel_size=1).to(device)
+
+# model = AttentionModel(input_dims=len(train.columns), lstm_units=best_params['hidden_dim'],cnn_output=best_params['cnn_output'],dropout_rate=best_params['dropout_rate'],kernel_size=1).to(device)
 
 # Define the loss function and optimizer
 criterion = nn.MSELoss()
@@ -183,8 +210,24 @@ with torch.no_grad():
 lstm_output_df = pd.DataFrame(index=merge_data.index, columns=['LSTM_Output'])
 lstm_output_df = lstm_output_df.fillna(np.nan)
 
-# Fill the last part of the DataFrame with the LSTM model's output
-lstm_output_df.iloc[-len(outputs):] = outputs.cpu().numpy()
+
+
+outputs = outputs[:, np.newaxis]
+
+
+#Multihead
+if Att_type == 'Multihead':
+    lstm_output_df.iloc[-len(outputs):] = outputs.squeeze()
+
+#ScaledDot
+elif Att_type == 'ScaledDot':
+    outputs_reshaped = outputs.cpu().numpy().squeeze()
+    outputs_reshaped = outputs_reshaped.reshape(-1, 1)
+    lstm_output_df.iloc[-len(outputs):] = outputs_reshaped
+
+#Soft
+else:
+    lstm_output_df.iloc[-len(outputs):] = outputs.cpu().numpy()
 
 # Concatenate the LSTM output with the original data
 merge_data_with_output = pd.concat([merge_data, lstm_output_df], axis=1)
@@ -221,7 +264,6 @@ true_test_inv = inverse_process(merge_data_with_output_test['LSTM_Output'].value
 model_test_inv = scaler.inverse_transform(model_test_inv)[:,0]
 test_test_inv = scaler.inverse_transform(true_test_inv)[:,0]
 
-print('Without XGB finetuning :',calculate_metrics(model_test_inv, test_test_inv))
 
 
 
@@ -235,8 +277,10 @@ def run_xgb(merge_data,lookback, n_estimators=20):
     Lt = Lt.drop('trade_date', axis=1)
 
     lt_delta = test.copy()
-    lt_delta.pop('0')
-
+    try:
+        lt_delta.pop('0')
+    except:
+        pass
     checker = test.copy()
     price = checker.pop('Price')
     checker.insert(6, 'Price', price)
@@ -246,18 +290,14 @@ def run_xgb(merge_data,lookback, n_estimators=20):
     y, yhat = xgboost_run.walk_forward_validation(train_x, test_x, test_y, n_estimators)
     return y, yhat
 
-# y,yhat = run_xgb(merge_data_with_output, 6,10)
-#
-# #mse, rmse, mae, r2 (0.00011711893633394431, 0.010822150263877521, 0.00840573064930789, 0.9321160241016728)
-# calculate_metrics(y, yhat)
 
 def objective(trial):
     # Define the hyperparameters to optimize
-    n_estimators = trial.suggest_int('n_estimators', 10, 100)
-    lookback = trial.suggest_int('lookback', 1, 20)
+    n_estimators = trial.suggest_int('n_estimators', 5, 30)
+    # lookback = trial.suggest_int('lookback', 1, 20)
 
     # Optimize the lookback and n_estimators
-    y,yhat = run_xgb(merge_data_with_output, lookback, n_estimators)
+    y,yhat = run_xgb(merge_data_with_output, 1, n_estimators)
     R2 = calculate_metrics(y, yhat)[-1]
 
     # Return the R2 score as the value to maximize
@@ -272,25 +312,27 @@ study = optuna.create_study(direction='maximize',sampler=sampler, pruner=pruner)
 # Provide initial parameters
 initial_params = {
     'n_estimators': 10,
-    'lookback': 6
+    'lookback': 1
 }
 
-# # Enqueue the trial with initial parameters
-# study.enqueue_trial(initial_params)
-# n_trials = 50
-# study.optimize(lambda trial: objective(trial), n_trials=n_trials,n_jobs=-1)
+# Enqueue the trial with initial parameters
+study.enqueue_trial(initial_params)
+n_trials = 50
+study.optimize(lambda trial: objective(trial), n_trials=n_trials,n_jobs=-1)
 
 # Print the best parameters
-# print(study.best_params)
-#{'n_estimators': 84, 'lookback': 2} : 0.94
+print(study.best_params)
 
-y,yhat = run_xgb(merge_data_with_output, 2,84)
+y,yhat = run_xgb(merge_data_with_output, 1,study.best_params['n_estimators'])
 
 xgb_y = np.array(inverse_process(y, len(merge_cols))).reshape(len(y),-1)
 xgb_yhat = np.array(inverse_process(yhat, len(merge_cols))).reshape(len(yhat),-1)
 xgb_y = scaler.inverse_transform(xgb_y)[:,0]
 xgb_yhat = scaler.inverse_transform(xgb_yhat)[:,0]
 
+
+
+print('Without XGB finetuning :',calculate_metrics(model_test_inv, test_test_inv))
 print('With XGB finetuning :',calculate_metrics(xgb_y, xgb_yhat))
 
 

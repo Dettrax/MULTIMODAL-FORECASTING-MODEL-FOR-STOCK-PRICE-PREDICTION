@@ -1,19 +1,29 @@
+#1 0.88
+best_params = {'hidden_dim': 46, 'dropout_rate': 0.22234557140321387, 'lookback': 4, 'num_epochs': 267, 'batch_size': 47, 'lr': 0.0011955493018202912, 'weight_decay': 1.3896799826651576e-05}
+
 #2 0.880
-print(study.best_params)
-{'hidden_dim': 84, 'dropout_rate': 0.10924601759225532, 'lookback': 1, 'num_epochs': 299, 'batch_size': 52, 'lr': 6.599320933831208e-05, 'weight_decay': 0.0001443204850539564}
+best_params = {'hidden_dim': 84, 'dropout_rate': 0.10924601759225532, 'lookback': 1, 'num_epochs': 299, 'batch_size': 52, 'lr': 6.599320933831208e-05, 'weight_decay': 0.0001443204850539564}
 
-#1 0.89112
-print(study.best_params)
-{'hidden_dim': 38, 'dropout_rate': 0.49397836975432774, 'lookback': 1, 'num_epochs': 154, 'batch_size': 65, 'lr': 0.0007525148153002192, 'weight_decay': 0.00019156247001597118}
+#3 0.8939
+best_params = {'hidden_dim': 33, 'dropout_rate': 0.45189673221289195, 'lookback': 3, 'num_epochs': 185, 'batch_size': 45, 'lr': 0.0020113575156252544, 'weight_decay': 1.3117765665649049e-05}
 
-#3 0.897
-print(study.best_params)
-{'hidden_dim': 95, 'dropout_rate': 0.19456143086274463, 'lookback': 1, 'num_epochs': 180, 'batch_size': 33, 'lr': 0.0004409266083417682, 'weight_decay': 2.2101545166559723e-05}
+#CNN-Attention :
+
+#Scaled Dot-Product Attention - 0.93
+{'cnn_output': 53, 'hidden_dim': 147, 'dropout_rate': 0.11315172616291817, 'lookback': 1, 'num_epochs': 65, 'batch_size': 65, 'lr': 0.00036368397727844253, 'weight_decay': 0.0008437248421188951}
+
+#Scaled Dot-Product Attention with Arima and Garch - 0.942
+{'cnn_output': 114, 'hidden_dim': 92, 'dropout_rate': 0.10135062229343499, 'lookback': 2, 'num_epochs': 249, 'batch_size': 77, 'lr': 0.00017943492288184664, 'weight_decay': 0.00030465328464725016}
+
+#Soft Attention - 0.89
+{'cnn_output': 174, 'hidden_dim': 34, 'dropout_rate': 0.4350155759204827, 'lookback': 1, 'num_epochs': 139, 'batch_size': 32, 'lr': 0.0008070007381040095, 'weight_decay': 0.00015267510873944186}
+
+#Soft Attention with Arima and Garch -
+
+#Multi-head Attention -
+
+#Multi-head Attention with Arima and Garch -
 
 
-for model 1
-xgb : y,yhat = run_xgb(merge_data_with_output, 2,84)
 
-for model 2
-xgb : y,yhat = run_xgb(merge_data_with_output, 1,48)
 

@@ -121,7 +121,7 @@ def PredictLoss(trainX, trainy, testX,test_price,hidden=16,epoch=100,lr=0.01,wei
     mat = clf(xv)
     if True: mat = mat.cpu()
     yhat = mat.detach().numpy().flatten()
-    return evluate_model(yhat,test_price)
+    return evluate_model(yhat,test_price)[-1]
 
 def PredictWithData(trainX, trainy, testX,hidden=16,epoch=100,lr=0.01,weight_decay=0.01,num_layers=2):
     clf = Net(len(trainX[0]), 1,hidden,num_layers)
@@ -162,7 +162,7 @@ testX = test.values
 def objective(trial):
     # Define the hyperparameters to optimize
     # model_type = trial.suggest_categorical('model_type', [1, 2, 3])
-    hidden_dim = trial.suggest_int('hidden_dim', 10, 20)
+    hidden_dim = trial.suggest_int('hidden_dim', 1, 25)
     num_epochs = trial.suggest_int('num_epochs', 50, 300)
     num_layers = trial.suggest_int('num_epochs', 1, 5)
     lr = trial.suggest_loguniform('lr', 1e-5, 1e-2)
@@ -176,35 +176,35 @@ def objective(trial):
 
 # print(PredictLoss(trainX, trainy, testX,test_price,hidden=16,epoch=100,lr=0.01,weight_decay=0.0001,num_layers=2))
 
-# initial_params = {'hidden_dim': 10, 'num_epochs': 255, 'num_layer': 1, 'lr': 0.00372006824710135, 'weight_decay': 0.00025504132602412996}
+initial_params = {'hidden_dim': 10, 'num_epochs': 255, 'num_layer': 1, 'lr': 0.00372006824710135, 'weight_decay': 0.00025504132602412996}
+
+# Create a study object and optimize the objective function
+sampler = TPESampler(seed=10)
+pruner = SuccessiveHalvingPruner()
+study = optuna.create_study(direction='maximize', sampler=sampler, pruner=pruner)
+study.enqueue_trial(initial_params)
+study.optimize(objective, n_trials=100)
+
+# Print the best parameters
+print(study.best_params)
+
+
+# #kaggle
+# best_param = {'hidden_dim': 16, 'num_epochs': 100, 'num_layer': 2, 'lr': 0.01, 'weight_decay': 0.0001}
 #
-# # Create a study object and optimize the objective function
-# sampler = TPESampler(seed=10)
-# pruner = SuccessiveHalvingPruner()
-# study = optuna.create_study(direction='maximize', sampler=sampler, pruner=pruner)
-# study.enqueue_trial(initial_params)
-# study.optimize(objective, n_trials=100,n_jobs=1)
+# # predictions = PredictWithData(trainX, trainy, testX,hidden=70,epoch=289,lr=0.00034401453323286885,weight_decay=0.017802616915745105,num_layers=1)
+# R2_l = []
+# MSE_l = []
+# MAE_l = []
+# RMSE_l = []
+# for i in tqdm(range(10)):
+#     MSE,RMSE,MAE,R2 = PredictLoss(trainX, trainy, testX,test_price,hidden=best_param['hidden_dim'],epoch=best_param['num_epochs'],lr=best_param['lr'],weight_decay=best_param['weight_decay'],num_layers=best_param['num_layer'])
+#     R2_l.append(R2)
+#     MSE_l.append(MSE)
+#     MAE_l.append(MAE)
+#     RMSE_l.append(RMSE)
+# print(sum(MSE_l)/10)
+# print(sum(RMSE_l)/10)
+# print(sum(MAE_l)/10)
+# print(sum(R2_l)/10)
 #
-# # Print the best parameters
-# print(study.best_params)
-
-
-#kaggle
-best_param = {'hidden_dim': 16, 'num_epochs': 100, 'num_layer': 2, 'lr': 0.01, 'weight_decay': 0.0001}
-
-# predictions = PredictWithData(trainX, trainy, testX,hidden=70,epoch=289,lr=0.00034401453323286885,weight_decay=0.017802616915745105,num_layers=1)
-R2_l = []
-MSE_l = []
-MAE_l = []
-RMSE_l = []
-for i in tqdm(range(10)):
-    MSE,RMSE,MAE,R2 = PredictLoss(trainX, trainy, testX,test_price,hidden=best_param['hidden_dim'],epoch=best_param['num_epochs'],lr=best_param['lr'],weight_decay=best_param['weight_decay'],num_layers=best_param['num_layer'])
-    R2_l.append(R2)
-    MSE_l.append(MSE)
-    MAE_l.append(MAE)
-    RMSE_l.append(RMSE)
-print(sum(MSE_l)/10)
-print(sum(RMSE_l)/10)
-print(sum(MAE_l)/10)
-print(sum(R2_l)/10)
-

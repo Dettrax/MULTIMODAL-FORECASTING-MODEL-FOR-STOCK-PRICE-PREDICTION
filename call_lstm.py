@@ -31,6 +31,9 @@ residuals = pd.read_csv('./ARIMA_residuals1.csv')
 residuals.index = pd.to_datetime(residuals['Date'])
 residuals.pop('Date')
 merge_data = pd.merge(data, residuals, on='Date')
+merge_data.pop('0')
+merge_data.pop('Forecasted_Volatility')
+
 cols = merge_data.columns
 merge_idx = merge_data.index
 merge_cols = merge_data.columns
@@ -139,12 +142,9 @@ def objective(trial):
 # # Print the best parameters
 # print(study.best_params)
 
-best_params = {'hidden_dim': 84, 'dropout_rate': 0.10924601759225532, 'lookback': 1, 'num_epochs': 299, 'batch_size': 52, 'lr': 6.599320933831208e-05, 'weight_decay': 0.0001443204850539564}
+best_params = {'hidden_dim': 33, 'dropout_rate': 0.45189673221289195, 'lookback': 3, 'num_epochs': 185, 'batch_size': 45, 'lr': 0.0020113575156252544, 'weight_decay': 1.3117765665649049e-05}
 
-
-# r2,outputs = optimizer_lstm(train, test, 1, best_params['hidden_dim'], best_params['dropout_rate'], best_params['lookback'], best_params['num_epochs'], best_params['batch_size'], best_params['lr'], best_params['weight_decay'])
-
-model = lstm(model_type=2,input_dim=len(train.columns), hidden_dim=best_params['hidden_dim'], output_dim=1,dropout_rate=best_params['dropout_rate']).to(device)
+model = lstm(model_type=3,input_dim=len(train.columns), hidden_dim=best_params['hidden_dim'], output_dim=1,dropout_rate=best_params['dropout_rate']).to(device)
 
 # Define the loss function and optimizer
 criterion = nn.MSELoss()
@@ -232,8 +232,10 @@ def run_xgb(merge_data,lookback, n_estimators=20):
     Lt = Lt.drop('trade_date', axis=1)
 
     lt_delta = test.copy()
-    lt_delta.pop('0')
-
+    try:
+        lt_delta.pop('0')
+    except:
+        pass
     checker = test.copy()
     price = checker.pop('Price')
     checker.insert(6, 'Price', price)
