@@ -1,3 +1,9 @@
+HyperOpt = False
+InCol = True
+Model_Type = 3
+print('HyperOpt:',HyperOpt)
+print('Arima + Garch:',InCol)
+print('Model Type:',Model_Type)
 import pandas as pd
 import numpy as np
 from LSTM import *
@@ -31,8 +37,10 @@ residuals = pd.read_csv('./ARIMA_residuals1.csv')
 residuals.index = pd.to_datetime(residuals['Date'])
 residuals.pop('Date')
 merge_data = pd.merge(data, residuals, on='Date')
-merge_data.pop('0')
-merge_data.pop('Forecasted_Volatility')
+
+if not InCol:
+    merge_data.pop('0')
+    merge_data.pop('Forecasted_Volatility')
 
 cols = merge_data.columns
 merge_idx = merge_data.index
@@ -126,25 +134,31 @@ def objective(trial):
     weight_decay = trial.suggest_loguniform('weight_decay', 1e-5, 1e-1)
 
     # Optimize the hyperparameters
-    r2 = optimizer_lstm(train, test, 1, hidden_dim, dropout_rate, lookback, num_epochs, batch_size, lr,
+    r2 = optimizer_lstm(train, test, Model_Type, hidden_dim, dropout_rate, lookback, num_epochs, batch_size, lr,
                         weight_decay)
 
     # Return the R2 score as the value to maximize
     return r2
 
+if Model_Type == 1:
+        best_params = {'hidden_dim': 46, 'dropout_rate': 0.22234557140321387, 'lookback': 4, 'num_epochs': 267, 'batch_size': 47, 'lr': 0.0011955493018202912, 'weight_decay': 1.3896799826651576e-05}
+elif Model_Type == 2:
+    best_params = {'hidden_dim': 84, 'dropout_rate': 0.10924601759225532, 'lookback': 1, 'num_epochs': 299,
+                   'batch_size': 52, 'lr': 6.599320933831208e-05, 'weight_decay': 0.0001443204850539564}
+else:
+    best_params = {'hidden_dim': 33, 'dropout_rate': 0.45189673221289195, 'lookback': 3, 'num_epochs': 185,
+                   'batch_size': 45, 'lr': 0.0020113575156252544, 'weight_decay': 1.3117765665649049e-05}
 
-# # Create a study object and optimize the objective function
-# sampler = TPESampler(seed=10)
-# pruner = SuccessiveHalvingPruner()
-# study = optuna.create_study(direction='maximize', sampler=sampler, pruner=pruner)
-# study.optimize(objective, n_trials=100,n_jobs=-1)
-#
-# # Print the best parameters
-# print(study.best_params)
+if HyperOpt:
+    # Create a study object and optimize the objective function
+    sampler = TPESampler(seed=10)
+    pruner = SuccessiveHalvingPruner()
+    study = optuna.create_study(direction='maximize', sampler=sampler, pruner=pruner)
+    study.optimize(objective, n_trials=100,n_jobs=-1)
 
-best_params = {'hidden_dim': 33, 'dropout_rate': 0.45189673221289195, 'lookback': 3, 'num_epochs': 185, 'batch_size': 45, 'lr': 0.0020113575156252544, 'weight_decay': 1.3117765665649049e-05}
+    best_params = study.best_params
 
-model = lstm(model_type=3,input_dim=len(train.columns), hidden_dim=best_params['hidden_dim'], output_dim=1,dropout_rate=best_params['dropout_rate']).to(device)
+model = lstm(model_type=Model_Type,input_dim=len(train.columns), hidden_dim=best_params['hidden_dim'], output_dim=1,dropout_rate=best_params['dropout_rate']).to(device)
 
 # Define the loss function and optimizer
 criterion = nn.MSELoss()
@@ -218,8 +232,6 @@ true_test_inv = inverse_process(merge_data_with_output_test['LSTM_Output'].value
 model_test_inv = scaler.inverse_transform(model_test_inv)[:,0]
 test_test_inv = scaler.inverse_transform(true_test_inv)[:,0]
 
-print('Without XGB finetuning :',calculate_metrics(model_test_inv, test_test_inv))
-
 
 
 import xgboost_run
@@ -245,18 +257,13 @@ def run_xgb(merge_data,lookback, n_estimators=20):
     y, yhat = xgboost_run.walk_forward_validation(train_x, test_x, test_y, n_estimators)
     return y, yhat
 
-# y,yhat = run_xgb(merge_data_with_output, 6,10)
-#
-# #mse, rmse, mae, r2 (0.00011711893633394431, 0.010822150263877521, 0.00840573064930789, 0.9321160241016728)
-# calculate_metrics(y, yhat)
 
 def objective(trial):
     # Define the hyperparameters to optimize
     n_estimators = trial.suggest_int('n_estimators', 10, 100)
-    lookback = trial.suggest_int('lookback', 1, 20)
 
     # Optimize the lookback and n_estimators
-    y,yhat = run_xgb(merge_data_with_output, lookback, n_estimators)
+    y,yhat = run_xgb(merge_data_with_output, 1, n_estimators)
     R2 = calculate_metrics(y, yhat)[-1]
 
     # Return the R2 score as the value to maximize
@@ -270,24 +277,40 @@ study = optuna.create_study(direction='maximize',sampler=sampler, pruner=pruner)
 
 # Provide initial parameters
 initial_params = {
-    'n_estimators': 10,
-    'lookback': 6
+    'n_estimators': 10
 }
 
-# # Enqueue the trial with initial parameters
-# study.enqueue_trial(initial_params)
-# n_trials = 50
-# study.optimize(lambda trial: objective(trial), n_trials=n_trials,n_jobs=-1)
+# Enqueue the trial with initial parameters
+study.enqueue_trial(initial_params)
+n_trials = 50
+study.optimize(lambda trial: objective(trial), n_trials=n_trials,n_jobs=-1)
 
 # Print the best parameters
-# print(study.best_params)
-#{'n_estimators': 84, 'lookback': 2} : 0.94
+print(study.best_params)
 
-y,yhat = run_xgb(merge_data_with_output, 2,84)
+
+y,yhat = run_xgb(merge_data_with_output, 1,study.best_params['n_estimators'])
 
 xgb_y = np.array(inverse_process(y, len(merge_cols))).reshape(len(y),-1)
 xgb_yhat = np.array(inverse_process(yhat, len(merge_cols))).reshape(len(yhat),-1)
 xgb_y = scaler.inverse_transform(xgb_y)[:,0]
 xgb_yhat = scaler.inverse_transform(xgb_yhat)[:,0]
 
+print("mse, rmse, mae, r2")
+print('Without XGB finetuning :',calculate_metrics(model_test_inv, test_test_inv))
 print('With XGB finetuning :',calculate_metrics(xgb_y, xgb_yhat))
+
+
+def count_parameters(model):
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+# Create an instance of your model
+model = lstm(model_type=Model_Type,
+             input_dim=len(train.columns),
+             hidden_dim=best_params['hidden_dim'],
+             output_dim=1,
+             dropout_rate=best_params['dropout_rate']).to(device)
+
+# Compute the total number of parameters in the model
+total_params = count_parameters(model)
+print(f'Total number of parameters in the model: {total_params}')

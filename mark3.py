@@ -1,3 +1,6 @@
+InCol = True
+print('Arima + Garch:',InCol)
+
 import os
 os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'garbage_collection_threshold:0.6,max_split_size_mb:32'
 import numpy as np
@@ -45,7 +48,9 @@ residuals.index = pd.to_datetime(residuals['Date'])
 residuals.pop('Date')
 merge_data = pd.merge(data, residuals, on='Date')
 
-merge_data.pop('0')
+if not InCol:
+    merge_data.pop('0')
+    merge_data.pop('Forecasted_Volatility')
 
 merge_data['pre_close'] = merge_data['Price'].shift(1)
 merge_data = merge_data.dropna(axis=0, how='any')
@@ -84,6 +89,8 @@ class Net(nn.Module):
     def forward(self, x):
         x = self.mamba(x)
         return x.flatten()
+
+
 def evaluation_metric(y_test,y_hat):
     MSE = mean_squared_error(y_test, y_hat)
     RMSE = MSE**0.5
@@ -156,7 +163,18 @@ testy = test.pop('Price_pre_close_pct_change').values
 trainX = train.values
 testX = test.values
 
+def count_parameters(model):
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
+# Create an instance of your model
+net = Net(len(trainX[0]), 1, 16, 2)
+
+# Compute the total number of parameters in the model
+total_params = count_parameters(net)
+print(f'Total number of parameters in the model: {total_params}')
+
+# Arima + Garch: True
+# Total number of parameters in the model: 19249
 # print(PredictLoss(trainX, trainy, testX,test_price,16,epoch=100))
 
 def objective(trial):

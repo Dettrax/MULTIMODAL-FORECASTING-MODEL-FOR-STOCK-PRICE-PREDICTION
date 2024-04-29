@@ -1,6 +1,6 @@
 # Type - Soft, Multihead, ScaledDot
-Att_type = 'Multihead'
-HyperOpt = True
+Att_type = 'ScaledDot'
+HyperOpt = False
 InCol = True
 
 print('Attention Type:', Att_type)
@@ -18,6 +18,7 @@ import warnings
 warnings.filterwarnings("ignore")
 import xgboost_run
 
+from sklearn.preprocessing import MinMaxScaler
 import pandas as pd
 import numpy as np
 import torch
@@ -43,7 +44,18 @@ data = data.drop(['Date'], axis=1)
 data = pd.DataFrame(data, dtype=np.float64)
 data.sort_index(inplace=True)
 
-test_split = '2023-09-20'  # 150
+
+brent = pd.read_csv('brent_with_forecasted_volatility_prime.csv')
+data = pd.read_excel('brent_vec.xlsx')
+# data = data[['Price', 'Open', 'High', 'Low', 'Vol', 'Change','Forecasted_Volatility','pos','neg','neu']]
+data = data.dropna(axis=0, how='any')
+data.index = pd.to_datetime(brent['Date'], format='%m/%d/%Y')
+# data.index = pd.to_datetime(data['Date'], format='%m/%d/%Y')
+# data =data.drop(['Date'], axis=1)
+data = pd.DataFrame(data, dtype=np.float64)
+
+data.sort_index(inplace=True)
+test_split = '2023-09-20' #150
 test_beg = '2023-09-21'
 
 residuals = pd.read_csv('./ARIMA_residuals1.csv')
@@ -317,7 +329,7 @@ def run_xgb(merge_data, lookback, n_estimators=20):
 
 def objective(trial):
     # Define the hyperparameters to optimize
-    n_estimators = trial.suggest_int('n_estimators', 5, 30)
+    n_estimators = trial.suggest_int('n_estimators', 5, 50)
     # lookback = trial.suggest_int('lookback', 1, 20)
 
     # Optimize the lookback and n_estimators
@@ -354,22 +366,8 @@ xgb_yhat = np.array(inverse_process(yhat, len(merge_cols))).reshape(len(yhat), -
 xgb_y = scaler.inverse_transform(xgb_y)[:, 0]
 xgb_yhat = scaler.inverse_transform(xgb_yhat)[:, 0]
 
-print("mse, rmse, mae, r2")
 print('Without XGB finetuning :', calculate_metrics(model_test_inv, test_test_inv))
 print('With XGB finetuning :', calculate_metrics(xgb_y, xgb_yhat))
 
-def count_parameters(model):
-    return sum(p.numel() for p in model.parameters() if p.requires_grad)
-
-# Create an instance of your model
-model = AttentionModel(input_dims=len(train.columns),
-                       lstm_units=best_params['hidden_dim'],
-                       cnn_output=best_params['cnn_output'],
-                       dropout_rate=best_params['dropout_rate'],
-                       kernel_size=1).to(device)
-
-# Compute the total number of parameters in the model
-total_params = count_parameters(model)
-print(f'Total number of parameters in the model: {total_params}')
 
 

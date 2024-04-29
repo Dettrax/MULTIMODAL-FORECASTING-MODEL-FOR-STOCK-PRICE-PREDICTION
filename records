@@ -15,14 +15,16 @@ best_params = {'hidden_dim': 33, 'dropout_rate': 0.45189673221289195, 'lookback'
 #Scaled Dot-Product Attention with Arima and Garch - 0.942
 {'cnn_output': 114, 'hidden_dim': 92, 'dropout_rate': 0.10135062229343499, 'lookback': 2, 'num_epochs': 249, 'batch_size': 77, 'lr': 0.00017943492288184664, 'weight_decay': 0.00030465328464725016}
 
-#Soft Attention - 0.89
-{'cnn_output': 174, 'hidden_dim': 34, 'dropout_rate': 0.4350155759204827, 'lookback': 1, 'num_epochs': 139, 'batch_size': 32, 'lr': 0.0008070007381040095, 'weight_decay': 0.00015267510873944186}
+#Soft Attention - 0.895
+{'cnn_output': 467, 'hidden_dim': 14, 'dropout_rate': 0.12204411154927669, 'lookback': 1, 'num_epochs': 248, 'batch_size': 32, 'lr': 9.897671745223481e-05, 'head': 4, 'weight_decay': 6.164885891482945e-05}
 
-#Soft Attention with Arima and Garch -
+#Soft Attention with Arima and Garch - 0.891
+{'cnn_output': 415, 'hidden_dim': 42, 'dropout_rate': 0.32677977665682545, 'lookback': 1, 'num_epochs': 211, 'batch_size': 52, 'lr': 0.00025083018149161764, 'weight_decay': 1.2986438189462185e-05}
 
 #Multi-head Attention -
 
-#Multi-head Attention with Arima and Garch -
+#Multi-head Attention with Arima and Garch - 0.87
+{'cnn_output': 290, 'hidden_dim': 220, 'dropout_rate': 0.14025128863511263, 'lookback': 1, 'num_epochs': 75, 'batch_size': 127, 'lr': 0.0012340990424287853, 'head': 4, 'weight_decay': 0.00011356340578794312}
 
 
 

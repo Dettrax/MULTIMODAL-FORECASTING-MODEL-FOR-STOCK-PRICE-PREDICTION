@@ -1,3 +1,6 @@
+InCol = True
+print('Arima + Garch:',InCol)
+
 import os
 os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'garbage_collection_threshold:0.6,max_split_size_mb:32'
 import numpy as np
@@ -44,7 +47,9 @@ residuals.index = pd.to_datetime(residuals['Date'])
 residuals.pop('Date')
 merge_data = pd.merge(data, residuals, on='Date')
 
-merge_data.pop('0')
+if not InCol:
+    merge_data.pop('0')
+    merge_data.pop('Forecasted_Volatility')
 
 merge_data['pre_close'] = merge_data['Price'].shift(1)
 merge_data = merge_data.dropna(axis=0, how='any')
