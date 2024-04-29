@@ -1,19 +1,42 @@
-# Project: Predicting Oil Prices with ARIMA, GARCH, LSTM, and Mamba Models
+# Project: Advanced Time-Series Forecasting of Oil Prices: An Integration of ARIMA, GARCH, LSTM, Mamba Models, and Attention Mechanisms with Sentiment Analysis
 
-This project aims to predict oil prices using a combination of historical prices and sentiment analysis of news articles. The project employs several models and techniques to achieve this, including ARIMA, GARCH, LSTM, bidirectional LSTM, CNN-Attention model, and a Linear-Time Sequence Modeling with Selective State Spaces called Mamba. Additionally, an XGBoost model is used to fine-tune and improve the performance of the LSTM, bidirectional LSTM, and CNN-Attention models.
+This project aims to predict oil prices using a combination of historical prices and sentiment analysis of news articles. The project employs several models and techniques to achieve this, including ARIMA, GARCH, LSTM, bidirectional LSTM, CNN-Attention model, Scaled Dot-Product Attention, Multi-Head Attention, and a Linear-Time Sequence Modeling with Selective State Spaces called Mamba. Additionally, an XGBoost model is used to fine-tune and improve the performance of the LSTM, bidirectional LSTM, and CNN-Attention models.
+
+
+## Key Mathematical and Algorithmic Components
+
+- **ARIMA (AutoRegressive Integrated Moving Average)**: A statistical analysis model that uses time series data to either better understand the data set or to predict future trends. It uses autoregressions, differences, and moving averages to model the data.
+
+- **GARCH (Generalized Autoregressive Conditional Heteroskedasticity)**: A statistical model used for time-series data that describes the variance of the current error term or innovation as a function of the actual sizes of the previous time periods' error terms.
+
+- **LSTM (Long Short-Term Memory)**: A type of recurrent neural network (RNN) that can learn and remember over long sequences and is not sensitive to the length of the input sequence. It uses gates to control the memorizing process.
+
+- **CNN-Attention Model**: This model combines Convolutional Neural Networks (CNNs) and attention mechanisms. CNNs are primarily used for image processing, video processing, and natural language processing. The attention mechanism allows the model to focus on specific parts of the input when producing the output.
+
+- **Soft Attention, Scaled Dot-Product Attention, and Multi-Head Attention**: These are attention mechanisms used in the context of RNNs. They allow the model to focus on different parts of the input sequence when producing an output sequence, giving more weight to more important parts.
+
+- **Mamba Model**: A Linear-Time Sequence Modeling with Selective State Spaces. It's a novel approach to sequence modeling that is designed to be efficient and effective, especially for large sequences.
+
+- **Sentiment Analysis**: The use of natural language processing to identify, extract, quantify, and study affective states and subjective information. In this project, it's used to analyze news articles related to oil prices.
+
+- **XGBoost**: A decision-tree-based ensemble Machine Learning algorithm that uses a gradient boosting framework. In this project, it's used to fine-tune and improve the performance of the LSTM, bidirectional LSTM, and CNN-Attention models.
+
 
 ## Methodology
 
 1. **ARIMA and GARCH Models**: These models are used to predict oil prices based on historical data. The corresponding scripts are `Arima.py` and `Garch.py`.
 
-2. **LSTM with ARIMA and GARCH**: This approach combines the LSTM model with ARIMA and GARCH models to improve the prediction accuracy. The script `call_lstm` is used for this purpose. You can choose between 1, 2, 3 for Single, Multi, and bidirectional models. The performance of these models is further enhanced using an XGBoost model for fine-tuning.
+2. **LSTM with ARIMA and GARCH**: This approach combines the LSTM model with ARIMA and GARCH models to improve the prediction accuracy. The script `call_lstm.py` is used for this purpose. You can choose between 1, 2, 3 for Single, Multi, and bidirectional models. The performance of these models is further enhanced using an XGBoost model for fine-tuning.
 
-3. **CNN-Attention Model with ARIMA and GARCH**: This approach uses 1d Conv with Soft attention algorithm ARIMA and GARCH models. The script `call_attention` is used for this purpose. The performance of these model is further enhanced using an XGBoost model for fine-tuning.
+3. **CNN-Attention Model with ARIMA and GARCH**: This approach uses 1d Conv with attention algorithm ARIMA and GARCH models. The script `call_attention.py` is used for this purpose. The performance of these model is further enhanced using an XGBoost model for fine-tuning.
 
-4**Mamba Model**: This is a Linear-Time Sequence Modeling with Selective State Spaces. It is incorporated with news sentiment analysis to improve prediction metrics significantly. The script `Mamba` is used for this purpose. It has three versions:
+4. **Soft Attention, Scaled Dot-Product Attention and Multi-Head Attention**: These attention mechanisms are used to improve the performance of the LSTM and bidirectional LSTM models. The script `call_attention.py` is used for this purpose, which switches between Soft Attention, Scaled Dot-Product Attention, and Multi-Head Attention models based on the configuration.
+
+5. **Mamba Model**: This is a Linear-Time Sequence Modeling with Selective State Spaces. It is incorporated with news sentiment analysis to improve prediction metrics significantly. The script `Mamba.py` is used for this purpose. It has three versions:
    - V1: Prediction with historic prices
    - V2: Prediction with historic prices and sentiment scores
    - V3: Prediction with historic prices, sentiment scores, and news vectors
+   
 
 ## Data Fetching and Preprocessing
 
@@ -40,11 +63,10 @@ To run this project, follow these steps:
    - `python Arima.py`
    - `python Garch.py`
    - `python call_lstm.py` (Choose between 1, 2, 3 for Seq, bidirectional, and CNN-Attention models.)
+   - `python call_attention.py` (This script switches between Soft Attention, Scaled Dot-Product Attention, and Multi-Head Attention models based on the configuration.)
    - `python Mamba.py` (Choose between V1, V2, V3 for different versions.)
 
-## Dependencies
-
-This project is implemented in Python and uses several libraries including NumPy, pandas, PyTorch, NLTK, Optuna, and more. Please ensure these are installed before running the project.
+Please note that the `call_attention.py` script switches between Soft Attention, Scaled Dot-Product Attention, and Multi-Head Attention models based on the configuration. You do not need to run separate scripts for each attention mechanism.
 
 ## Contributing
 
@@ -53,6 +75,24 @@ Contributions to this project are welcome. Please fork the repository and create
 ## License
 
 This project is open source and available under the [MIT License](LICENSE).
+
+## Dependencies
+
+This project is implemented in Python and uses several libraries. The complete list of dependencies can be found in the `requirements.txt` file. Some of the key libraries used include:
+
+- numpy
+- pandas
+- torch
+- nltk
+- optuna
+- sklearn
+- matplotlib
+- xgboost
+- transformers
+- newspaper3k
+- selenium
+
+Please ensure these are installed before running the project.
 
 ## Requirements
 
@@ -70,14 +110,3 @@ You can install these packages using pip:
 
 ```bash
 pip install numpy pandas torch nltk optuna sklearn matplotlib
-```
-
-You will also need to have the FinBERT transformer model available for the sentiment analysis. You can find more information about this model and how to use it [here](https://github.com/ProsusAI/finBERT).
-
-Finally, you will need access to the oilprices.com website to fetch the news articles, and the `brent_with_forecasted_volatility_prime.csv` and `brent_vec.xlsx` data files.
-
-## References
-
-- Mamba Model: [https://github.com/zshicode/MambaStock](https://github.com/zshicode/MambaStock)
-- Attention-CLX-stock-prediction: [https://github.com/zshicode/Attention-CLX-stock-prediction](https://github.com/zshicode/Attention-CLX-stock-prediction)
-- Paper: [https://arxiv.org/pdf/2111.09111](https://arxiv.org/pdf/2111.09111)
