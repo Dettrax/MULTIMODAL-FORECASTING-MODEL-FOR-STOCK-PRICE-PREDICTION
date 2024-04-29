@@ -1,7 +1,3 @@
-import pandas as pd
-import matplotlib.pyplot as plt
-import numpy as np
-from statsmodels.tsa.stattools import adfuller
 from statsmodels.stats.diagnostic import acorr_ljungbox
 from utils import *
 
@@ -24,7 +20,7 @@ def convert_percent_to_float(value):
 data['Change'] = data['Change'].apply(convert_percent_to_float)
 
 data.index = pd.to_datetime(data['Date'], format='%m/%d/%Y')
-data =data.drop(['Date','Change'], axis=1)
+data = data.drop(['Date','Change'], axis=1)
 data = pd.DataFrame(data, dtype=np.float64)
 
 data.sort_index(inplace=True)
@@ -120,8 +116,3 @@ residuals.plot(title="Residuals", ax=ax[0])
 residuals.plot(kind='kde', title='Density', ax=ax[1])
 plt.show()
 residuals.to_csv('./ARIMA_residuals1.csv')
-evaluation_metric(test['Price'],predictions)
-adf_test(temp)
-adf_test(temp1)
-
-data.to_csv('brent_processed.csv')

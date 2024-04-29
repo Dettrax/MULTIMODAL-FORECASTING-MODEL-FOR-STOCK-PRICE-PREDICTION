@@ -57,7 +57,7 @@ if not InCol:
 
 merge_idx = merge_data.index
 merge_cols = merge_data.columns
-# apply minmaxscaler
+
 from sklearn.preprocessing import MinMaxScaler
 
 scaler = MinMaxScaler()
@@ -135,7 +135,7 @@ def optimise_attention(train, test, cnn_output, hidden_dim, dropout_rate, lookba
 
 
 def objective(trial):
-    # Define the hyperparameters to optimize
+
     # model_type = trial.suggest_categorical('model_type', [1, 2, 3])
     cnn_output = trial.suggest_int('cnn_output', 32, 128)
     hidden_dim = trial.suggest_int('hidden_dim', 10, 100)
@@ -149,7 +149,7 @@ def objective(trial):
     r2 = optimise_attention(train, test, cnn_output, hidden_dim, dropout_rate, lookback, num_epochs, batch_size, lr,
                             weight_decay, 1)
 
-    # Return the R2 score as the value to maximize
+
     return r2
 
 
@@ -187,7 +187,7 @@ if HyperOpt:
     study = optuna.create_study(direction='maximize', sampler=sampler, pruner=pruner)
     study.optimize(objective, n_trials=100)
 
-    # Print the best parameters
+
     print(study.best_params)
     best_params = study.best_params
 
@@ -195,9 +195,6 @@ model = AttentionModel(input_dims=len(train.columns), lstm_units=best_params['hi
                        cnn_output=best_params['cnn_output'], dropout_rate=best_params['dropout_rate'],
                        kernel_size=1).to(device)
 
-# model = AttentionModel(input_dims=len(train.columns), lstm_units=best_params['hidden_dim'],cnn_output=best_params['cnn_output'],dropout_rate=best_params['dropout_rate'],kernel_size=1).to(device)
-
-# Define the loss function and optimizer
 criterion = nn.MSELoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=best_params['lr'], weight_decay=best_params['weight_decay'])
 
@@ -207,11 +204,11 @@ testX, testY = create_sequences(merge_data.values, lookback)
 
 trainX, trainY = create_sequences(train.values, lookback)
 
-# Train the model
+
 num_epochs = best_params['num_epochs']
 batch_size = best_params['batch_size']
 model.train()
-# Training loop for the best model
+
 for epoch in tqdm(range(num_epochs)):
     for i in range(0, len(trainX), batch_size):
         inputs = trainX[i:i + batch_size]
@@ -230,7 +227,7 @@ with torch.no_grad():
     testX = testX.permute(0, 2, 1)
     outputs = model(testX.float())
 
-# Create a placeholder DataFrame
+
 lstm_output_df = pd.DataFrame(index=merge_data.index, columns=['LSTM_Output'])
 lstm_output_df = lstm_output_df.fillna(np.nan)
 
@@ -330,7 +327,7 @@ def objective(trial):
     return R2
 
 
-# Create a study object and optimize the objective function
+
 sampler = TPESampler(seed=10)
 pruner = SuccessiveHalvingPruner()
 study = optuna.create_study(direction='maximize', sampler=sampler, pruner=pruner)
@@ -341,13 +338,12 @@ initial_params = {
     'lookback': 1
 }
 
-# Enqueue the trial with initial parameters
+
 study.enqueue_trial(initial_params)
 n_trials = 30
 study.optimize(lambda trial: objective(trial), n_trials=n_trials, n_jobs=-1)
 
-# # Print the best parameters
-# print(study.best_params)
+
 
 y, yhat = run_xgb(merge_data_with_output, 1, study.best_params['n_estimators'])
 
@@ -363,14 +359,13 @@ print('With XGB finetuning :', calculate_metrics(xgb_y, xgb_yhat))
 def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
-# Create an instance of your model
+
 model = AttentionModel(input_dims=len(train.columns),
                        lstm_units=best_params['hidden_dim'],
                        cnn_output=best_params['cnn_output'],
                        dropout_rate=best_params['dropout_rate'],
                        kernel_size=1).to(device)
 
-# Compute the total number of parameters in the model
 total_params = count_parameters(model)
 print(f'Total number of parameters in the model: {total_params}')
 

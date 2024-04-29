@@ -12,14 +12,14 @@ data = {
     'p+a+g+s+n_v': {'MSE': 1.2202, 'RMSE': 1.1045, 'MAE': 0.8512, 'R2': 0.9514, 'Data': 'P+A+G+S+N'}
 }
 
-# Plotting first two models
+
 fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(12, 8))
 fig.suptitle('Selective Space Modelling')
 
-# Collecting metric values from all models except last two
+
 all_metric_values = [data[model][metric] for model in models for metric in metrics]
 
-# Set y-axis limit dynamically
+
 ylim = max(all_metric_values) * 1.1
 
 for i, metric in enumerate(metrics):
@@ -30,7 +30,7 @@ for i, metric in enumerate(metrics):
     bars = ax.bar(models, [data[model][metric] for model in models], color=['blue', 'orange', 'green'])
     ax.set_title(metric)
     ax.set_ylabel(metric)
-    ax.set_ylim(0, ylim)  # Set y-axis limit dynamically
+    ax.set_ylim(0, ylim)
 
     # Adding data info
     for j, bar in enumerate(bars):
@@ -48,10 +48,10 @@ for i, metric in enumerate(metrics):
 fig2, axes2 = plt.subplots(nrows=2, ncols=2, figsize=(12, 8))
 fig2.suptitle('Selective Space Modelling')
 
-# Collecting metric values from last two models
+
 all_metric_values_last_two = [data[model][metric] for model in list(data.keys())[3:] for metric in metrics]
 
-# Set y-axis limit dynamically
+
 ylim_last_two = max(all_metric_values_last_two) * 1.1
 
 for i, metric in enumerate(metrics):
@@ -62,9 +62,9 @@ for i, metric in enumerate(metrics):
     bars2 = ax2.bar(list(data.keys())[3:], [data[model][metric] for model in list(data.keys())[3:]], color='gray')
     ax2.set_title(metric)
     ax2.set_ylabel(metric)
-    ax2.set_ylim(0, ylim_last_two)  # Set y-axis limit dynamically
+    ax2.set_ylim(0, ylim_last_two)
 
-    # Adding data info
+
     for bar in bars2:
         height = bar.get_height()
         ax2.annotate(f'{height:.3f}', xy=(bar.get_x() + bar.get_width() / 2, height),
@@ -72,11 +72,12 @@ for i, metric in enumerate(metrics):
                      textcoords='offset points',
                      ha='center', va='bottom')
 
-    # Adding labels
+
     for j, model in enumerate(list(data.keys())[3:]):
         ax2.text(j, 0, data[model]['Data'], ha='center', va='bottom')
 
 plt.tight_layout()
 plt.show()
-#save the plot
+
+
 fig.savefig('Mamba_perf.png')

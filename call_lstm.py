@@ -1,6 +1,6 @@
 HyperOpt = False
 InCol = True
-Model_Type = 3
+Model_Type = 1
 print('HyperOpt:',HyperOpt)
 print('Arima + Garch:',InCol)
 print('Model Type:',Model_Type)
@@ -30,7 +30,7 @@ data = pd.DataFrame(data, dtype=np.float64)
 
 data.sort_index(inplace=True)
 
-test_split = '2023-09-20' #150
+test_split = '2023-09-20'
 test_beg = '2023-09-21'
 
 residuals = pd.read_csv('./ARIMA_residuals1.csv')
@@ -45,7 +45,8 @@ if not InCol:
 cols = merge_data.columns
 merge_idx = merge_data.index
 merge_cols = merge_data.columns
-# apply minmaxscaler
+
+
 from sklearn.preprocessing import MinMaxScaler
 scaler = MinMaxScaler()
 merge_data = scaler.fit_transform(merge_data)
@@ -70,12 +71,10 @@ def create_sequences(data, lookback):
 def optimizer_lstm(train, test,model_type, hidden_dim, dropout_rate,lookback=10, num_epochs=100, batch_size=64, lr=0.001, weight_decay=0.001):
     model = lstm(model_type, input_dim=len(train.columns), hidden_dim=hidden_dim, output_dim=1,dropout_rate=dropout_rate).to(device)
 
-    # Define the loss function and optimizer
+
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
 
-
-    # Create sequences for LSTM
     lookback = lookback
     trainX, trainY = create_sequences(train.values, lookback)
     testX, testY = create_sequences(test.values, lookback)
@@ -84,7 +83,7 @@ def optimizer_lstm(train, test,model_type, hidden_dim, dropout_rate,lookback=10,
     num_epochs = num_epochs
     batch_size = batch_size
     model.train()
-    # Training loop for the best model
+
     for epoch in range(num_epochs):
         for i in range(0, len(trainX), batch_size):
             inputs = trainX[i:i + batch_size]
@@ -94,12 +93,7 @@ def optimizer_lstm(train, test,model_type, hidden_dim, dropout_rate,lookback=10,
             loss = criterion(outputs.squeeze(), targets.float())
             loss.backward()
             optimizer.step()
-        # if epoch % 10 == 0:
-        #     model.eval()
-        #     with torch.no_grad():
-        #         outputs = model(testX.float())
-        #         val_loss = criterion(outputs.squeeze(), testY.float())
-        #     print(f'Epoch {epoch + 1}, Loss: {val_loss.item():.4f}')
+
 
 
     def calculate_metrics(y_true, y_pred):
@@ -113,7 +107,7 @@ def optimizer_lstm(train, test,model_type, hidden_dim, dropout_rate,lookback=10,
 
         return mse, rmse, mae, r2
 
-    # After training your model, you can calculate the metrics
+
     model.eval()
     with torch.no_grad():
         outputs = model(testX.float())
@@ -123,7 +117,7 @@ def optimizer_lstm(train, test,model_type, hidden_dim, dropout_rate,lookback=10,
 
 
 def objective(trial):
-    # Define the hyperparameters to optimize
+
     # model_type = trial.suggest_categorical('model_type', [1, 2, 3])
     hidden_dim = trial.suggest_int('hidden_dim', 10, 100)
     dropout_rate = trial.suggest_uniform('dropout_rate', 0.1, 0.5)
@@ -150,7 +144,7 @@ else:
                    'batch_size': 45, 'lr': 0.0020113575156252544, 'weight_decay': 1.3117765665649049e-05}
 
 if HyperOpt:
-    # Create a study object and optimize the objective function
+
     sampler = TPESampler(seed=10)
     pruner = SuccessiveHalvingPruner()
     study = optuna.create_study(direction='maximize', sampler=sampler, pruner=pruner)
@@ -160,17 +154,16 @@ if HyperOpt:
 
 model = lstm(model_type=Model_Type,input_dim=len(train.columns), hidden_dim=best_params['hidden_dim'], output_dim=1,dropout_rate=best_params['dropout_rate']).to(device)
 
-# Define the loss function and optimizer
+
 criterion = nn.MSELoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=best_params['lr'], weight_decay=best_params['weight_decay'])
 
-# Create sequences for LSTM
+
 lookback = best_params['lookback']
 testX, testY = create_sequences(merge_data.values, lookback)
 
 trainX, trainY = create_sequences(train.values, lookback)
 
-# Train the model
 num_epochs = best_params['num_epochs']
 batch_size = best_params['batch_size']
 model.train()
@@ -190,14 +183,11 @@ with torch.no_grad():
     outputs = model(testX.float())
 
 
-# Create a placeholder DataFrame
 lstm_output_df = pd.DataFrame(index=merge_data.index, columns=['LSTM_Output'])
 lstm_output_df = lstm_output_df.fillna(np.nan)
 
-# Fill the last part of the DataFrame with the LSTM model's output
 lstm_output_df.iloc[-len(outputs):] = outputs.cpu().numpy()
 
-# Concatenate the LSTM output with the original data
 merge_data_with_output = pd.concat([merge_data, lstm_output_df], axis=1)
 
 
@@ -266,21 +256,20 @@ def objective(trial):
     y,yhat = run_xgb(merge_data_with_output, 1, n_estimators)
     R2 = calculate_metrics(y, yhat)[-1]
 
-    # Return the R2 score as the value to maximize
+
     return R2
 
 
-# Create a study object and optimize the objective function
 sampler = TPESampler(seed=10)
 pruner = SuccessiveHalvingPruner()
 study = optuna.create_study(direction='maximize',sampler=sampler, pruner=pruner)
 
-# Provide initial parameters
+
 initial_params = {
     'n_estimators': 10
 }
 
-# Enqueue the trial with initial parameters
+
 study.enqueue_trial(initial_params)
 n_trials = 30
 study.optimize(lambda trial: objective(trial), n_trials=n_trials,n_jobs=-1)
@@ -311,7 +300,7 @@ model = lstm(model_type=Model_Type,
              output_dim=1,
              dropout_rate=best_params['dropout_rate']).to(device)
 
-# Compute the total number of parameters in the model
+
 total_params = count_parameters(model)
 print(f'Total number of parameters in the model: {total_params}')
 

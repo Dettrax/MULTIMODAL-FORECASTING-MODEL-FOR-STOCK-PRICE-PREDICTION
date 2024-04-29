@@ -32,11 +32,3 @@ class AttentionModel(nn.Module):
         x = torch.sigmoid(self.fc(x))
         return x
 
-# # Instantiate the model
-# model = AttentionModel(input_dims=13, time_steps=20, lstm_units=64)
-#
-# # Create a random input tensor
-# input_tensor = torch.randn(32, 13, 10)  # batch_size=32, sequence_length=10, input_dims=13
-#
-# # Make a forward pass through the model
-# output = model(input_tensor)

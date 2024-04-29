@@ -24,10 +24,10 @@ class AttentionModel(nn.Module):
     def forward(self, x):
         x = F.relu(self.conv1d(x))
         x = self.dropout1(x)
-        x = x.transpose(1, 2)  # Add this line
+        x = x.transpose(1, 2)
         x, _ = self.bilstm(x)
         x = self.dropout2(x)
-        x = self.attention(x, x, x)  # query, key, and value are all x
+        x = self.attention(x, x, x)
         x = torch.sigmoid(self.fc(x))
         return x
 

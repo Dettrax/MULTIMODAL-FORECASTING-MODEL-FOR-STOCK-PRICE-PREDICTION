@@ -30,7 +30,6 @@ data_info = {
     'Bidirectional': ['P+A+G', 'P+A+G']
 }
 
-# Plotting
 fig, axs = plt.subplots(2, 2, figsize=(14, 10))
 
 for i, metric in enumerate(metrics):
@@ -48,7 +47,7 @@ for i, metric in enumerate(metrics):
     ax.set_xticklabels(model_configurations)
     ax.legend()
 
-    # Adding data information
+
     for k, rect in enumerate(bars):
         data_used = data_info[model_configurations[k]][j]
         ax.text(rect.get_x() + rect.get_width() / 2, rect.get_height(), data_used, ha='center', va='bottom')
