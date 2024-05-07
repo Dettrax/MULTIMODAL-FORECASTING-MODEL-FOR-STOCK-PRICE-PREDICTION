@@ -3,6 +3,8 @@
 This project aims to predict oil prices using a combination of historical prices and sentiment analysis of news articles. The project employs several models and techniques to achieve this, including ARIMA, GARCH, LSTM, bidirectional LSTM, CNN-Attention model, Scaled Dot-Product Attention, Multi-Head Attention, and a Linear-Time Sequence Modeling with Selective State Spaces called Mamba. Additionally, an XGBoost model is used to fine-tune and improve the performance of the LSTM, bidirectional LSTM, and CNN-Attention models.
 
 
+## I have already collected the data and optimised the Hyperparameters for the models. Directly run the scripts to get the predictions
+
 ## Key Mathematical and Algorithmic Components
 
 - **ARIMA (AutoRegressive Integrated Moving Average)**: A statistical analysis model that uses time series data to either better understand the data set or to predict future trends. It uses autoregressions, differences, and moving averages to model the data.
@@ -42,11 +44,11 @@ This project aims to predict oil prices using a combination of historical prices
 
 1. **Data Fetching**: Run `scrapper.py` with a change in page number. To make things faster, you can run this in multiple kernels with parts like kernel 1: 1-100 page, kernel 2: 101-200, and so on.
 
-2. **Data Preprocessing**: The scripts `Data_processing.py`, `final_process.py`, and `finbert_vec.py` are used for data preprocessing.
+2. **Data Preprocessing**: The scripts `data_processing.py`, `final_process.py`, and `finbert_vec.py` are used for data preprocessing.
 
 ## Running the Project
 
-To run this project, follow these steps:
+To run this project, follow these steps(make sure you have a GPU with CUDA installed):
 
 1. Clone the repository and navigate to the project directory.
 
@@ -55,18 +57,33 @@ To run this project, follow these steps:
 3. Run the data fetching script with the command `python scrapper.py`.
 
 4. Run the data preprocessing scripts in the following order:
-   - `python Data_processing.py`
-   - `python final_process.py`
+   - `python data_processing.py`
    - `python finbert_vec.py`
+   - `python final_process.py`
 
 5. Run the model scripts in the following order:
    - `python Arima.py`
    - `python Garch.py`
    - `python call_lstm.py` (Choose between 1, 2, 3 for Seq, bidirectional, and CNN-Attention models.)
    - `python call_attention.py` (This script switches between Soft Attention, Scaled Dot-Product Attention, and Multi-Head Attention models based on the configuration.)
-   - `python Mamba.py` (Choose between V1, V2, V3 for different versions.)
+   - `python mark2.py` (Choose between V1, V2, V3 for different versions.)
 
-Please note that the `call_attention.py` script switches between Soft Attention, Scaled Dot-Product Attention, and Multi-Head Attention models based on the configuration. You do not need to run separate scripts for each attention mechanism.
+Please note for each script, you may need to change the configuration parameters based on your requirements.
+for example in `call_lstm.py` you can change the following parameters:
+- `model_type` (1, 2, 3 for Seq, Multilayer and bidirectional models)
+- HyperOpt parameters for baysian optimization
+- InCol to change the input columns
+
+in `call_attention.py` you can change the following parameters:
+- Att_type to switch between Soft Attention, Scaled Dot-Product Attention, and Multi-Head Attention models. default is Soft Attention
+- HyperOpt parameters for baysian optimization
+- InCol to change the input columns
+
+Note only mark2 has XGB model for fine-tuning
+
+In `mark1.py` , 'mark2.py' and 'mark3.py' you can change the following parameters:
+- HyperOpt parameters for baysian optimization
+- InCol to change the input columns
 
 ## Contributing
 

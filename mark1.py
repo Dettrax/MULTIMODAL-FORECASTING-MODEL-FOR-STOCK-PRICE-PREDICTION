@@ -189,6 +189,7 @@ MAE_l = []
 RMSE_l = []
 for i in tqdm(range(5)):
     MSE,RMSE,MAE,R2 = PredictLoss(trainX, trainy, testX,test_price,hidden=best_param['hidden_dim'],epoch=best_param['num_epochs'],lr=best_param['lr'],weight_decay=best_param['weight_decay'],num_layers=best_param['num_layer'])
+    print('MSE:',MSE)
     R2_l.append(R2)
     MSE_l.append(MSE)
     MAE_l.append(MAE)

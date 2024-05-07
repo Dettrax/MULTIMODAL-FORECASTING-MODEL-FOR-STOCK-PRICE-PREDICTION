@@ -26,7 +26,7 @@ def get_date(url):
     return title_element.text
 
 from lxml import html,cssselect
-for pages in tqdm(range(600,800)):
+for pages in tqdm(range(1,900)):
     time.sleep(1)
     response = requests.get(f"https://oilprice.com/Latest-Energy-News/World-News/Page-{pages}.html")
     tree = html.fromstring(response.content)

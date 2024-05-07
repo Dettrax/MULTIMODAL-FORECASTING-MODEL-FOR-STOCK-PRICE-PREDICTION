@@ -1,4 +1,4 @@
-InCol = False
+InCol = True
 HyperOpt = False
 print('Arima + Garch:',InCol)
 print('HyperOpt:',HyperOpt)
@@ -150,7 +150,7 @@ def PredictWithData(trainX, trainy, testX,hidden=16,epoch=100,lr=0.01,weight_dec
     mat = clf(xv)
     if True: mat = mat.cpu()
     yhat = mat.detach().numpy().flatten()
-    return yhat
+    return yhat,clf
 
 trainy = train.pop('Price_pre_close_pct_change').values
 testy = test.pop('Price_pre_close_pct_change').values
@@ -189,6 +189,7 @@ if HyperOpt:
     best_param = study.best_params
 
 
+print("I am running the same model 10 times to get the average of the metrics")
 R2_l = []
 MSE_l = []
 MAE_l = []
@@ -200,9 +201,52 @@ for i in tqdm(range(10)):
     MAE_l.append(MAE)
     RMSE_l.append(RMSE)
 
+
+combined_train_test = np.vstack((trainX, testX))
+
+
+
+
+outputs,model = PredictWithData(trainX, trainy, testX,hidden=best_param['hidden_dim'],epoch=best_param['num_epochs'],lr=best_param['lr'],weight_decay=best_param['weight_decay'],num_layers=best_param['num_layer'])
+
+
+xv = torch.from_numpy(combined_train_test).float().unsqueeze(0)
+
+pred = model(xv.cuda())
+pred = pred.cpu().detach().numpy().flatten()
+
+combined_price = np.vstack((train_price.values.reshape(-1, 1), test_price.values.reshape(-1, 1)))
+
+temp = len(combined_price)
+final_pred = []
+for i in range(temp):
+    temp_pred = merge_data['Price'].values[-temp + i] * (1 + pred[i])
+    final_pred.append(temp_pred)
+
+
+# Ensure final_pred is a numpy array and reshape it to 2D
+final_pred = np.array(final_pred).reshape(-1, 1)
+
+# Concatenate final_pred with combined_train_test on column
+combined_data = np.hstack((combined_train_test, final_pred))
+
+train = combined_data[:len(trainX)]
+test = combined_data[len(trainX):]
+
+testy = combined_price[len(trainX):]
+
+import xgboost_run
+
+
+y, yhat = xgboost_run.walk_forward_validation(train, test, testy, 16)
+
+print("Without XGB tuning : ")
 print("mse, rmse, mae, r2")
 print(sum(MSE_l)/10,end=' ')
 print(sum(RMSE_l)/10,end=' ')
 print(sum(MAE_l)/10,end=' ')
-print(sum(R2_l)/10,end=' ')
+print(sum(R2_l)/10)
+
+print("mse, rmse, mae, r2")
+print("With XGB tuning : ",evaluation_metric(y, yhat))
 
